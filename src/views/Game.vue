@@ -1,40 +1,39 @@
 <template>
   <div>
-    <h1>{{ msg }}</h1>
-    <p>
-      For a guide and recipes on how to configure / customize this project,<br>
-      check out the
-      <a href="https://cli.vuejs.org" target="_blank" rel="noopener">vue-cli documentation</a>.
-    </p>
-    <button @click="show">Open</button>
-    <!-- <v-dialog height="100%"/> -->
-    <modals-container/>
+    <div v-if="player">
+      <p>{{player.name}}</p>
+      <p>{{player.mission}}</p>
+      <p>{{player.to_kill}}</p>
+      <button @click="killed('killed')"> J'ai kill !</button>
+      <button @click="quit">Quitter</button>
+    </div>
+    <p v-show="!player">Loading...</p>
     <modal name="hello-world" height="100%" width="100%">
         <template>
             <div>
                 <p style="text-align:center;">dzaij</p>
-                <button @click="hide">Close</button>
                 <ul id="example-1">
-                <li v-for="player in players" v-bind:key="player">
-                    {{ player.name }}
+                <li v-for="player in players" v-bind:key="player.name">
+                  <button @click="chose(player)">{{ player.name }}</button>
                 </li>
                 </ul>
             </div>
         </template>
     </modal>
-
   </div>
-  
 </template>
 
 <script>
 import firebase from 'firebase'
 import PlayersModal from '@/components/PlayersModal.vue'
+import axios from 'axios'
+
 export default {
   name: 'Game',
   data() {
       return {
-          players: []
+          players: [],
+          player: null
       }
   },
   components: {
@@ -43,24 +42,65 @@ export default {
   props: {
     msg: String
   },
+  mounted: function() {
+    if (!localStorage.getItem('kyllerPlayer')) {
+      this.$modal.show('hello-world')
+    }
+  },
   created: function() {
-      this.test()
       var db = firebase.firestore();
       db.collection("games").doc(this.$route.params.game).onSnapshot((doc)  => {
-        console.log("Current data: ", doc.data()['players']);
+        console.log("Current data: ", doc.data()['players'])
         this.players = doc.data()["players"]
+        const playerName = localStorage.getItem('kyllerPlayer')
+        if (playerName) {
+        this.player = this.players.find((p) => p.name === playerName)
+      }
     });
-
   },
   methods: {
-    test: function () {
-        console.log(this.$route.params.game)
-    },
-    show () {
+    show() {
         this.$modal.show('hello-world')
     },
-    hide () {
-        this.$modal.hide('hello-world');
+    hide() {
+        this.$modal.hide('hello-world')
+    },
+    chose(player) {
+      if (player) {
+        localStorage.setItem('kyllerPlayer', player.name)
+        this.player = player
+        this.$modal.hide('hello-world')
+      }
+    },
+    quit() {
+      localStorage.removeItem('kyllerPlayer')
+      this.$router.push('/')
+    },
+    killed(status) {
+      var killedFunction = firebase.functions().httpsCallable('killed')
+      // axios.post('http://localhost:5000/kyller/us-central1/killed', {data: {
+      // // axios.post('https://us-central1-kyller.cloudfunctions.net/killed', {data: {
+      //     'gameId': this.$route.params.game,
+      //     'playerName': this.player.name,
+      //     'status': status
+      //   }}, {
+      //     headers: {
+      //       'Content-Type': 'application/json',
+      //     }
+      //   }).then(function(ok) {
+      //     console.log(ok)
+      //   }, function(error) {
+      //     console.log(error)
+      //   })
+      killedFunction({
+        gameId: this.$route.params.game,
+        playerName: this.player.name,
+        status: status
+      }).then(function(ok) {
+        console.log(ok)
+      }, function(error) {
+        console.log(error)
+      })
     }
   },
   
