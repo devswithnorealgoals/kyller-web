@@ -1,9 +1,19 @@
 <template>
   <div>
     <div v-if="player">
-      <p>{{player.name}}</p>
-      <p>{{player.mission}}</p>
-      <p>{{player.to_kill}}</p>
+      <p style="text-align:center;">{{game}}</p>
+      <p style="text-align:center;">{{players.filter((p)=>!p.killed).length}} joueurs restants</p>
+      <div v-show="player.killed">
+        Vous avez perdu :(
+      </div>
+      <div v-show="player.name != player.to_kill && !player.killed">
+        <p>{{player.name}}</p>
+        <p>{{player.mission}}</p>
+        <p>{{player.to_kill}}</p>
+      </div>
+      <div v-show="player.name == player.to_kill && !player.killed">
+        <p>Vous avez gagné !</p>
+      </div>
       <button @click="killed('killed')"> J'ai kill !</button>
       <button @click="quit">Quitter</button>
     </div>
@@ -11,7 +21,7 @@
     <modal name="hello-world" height="100%" width="100%">
         <template>
             <div>
-                <p style="text-align:center;">dzaij</p>
+                <p style="text-align:center;">{{game}}</p>
                 <ul id="example-1">
                 <li v-for="player in players" v-bind:key="player.name">
                   <button @click="chose(player)">{{ player.name }}</button>
@@ -24,16 +34,17 @@
 </template>
 
 <script>
-import firebase from 'firebase'
-import PlayersModal from '@/components/PlayersModal.vue'
-import axios from 'axios'
+import firebase from "firebase"
+import PlayersModal from "@/components/PlayersModal.vue"
+import axios from "axios"
 
 export default {
-  name: 'Game',
+  name: "Game",
   data() {
       return {
           players: [],
-          player: null
+          player: null,
+          game: ''
       }
   },
   components: {
@@ -43,16 +54,17 @@ export default {
     msg: String
   },
   mounted: function() {
-    if (!localStorage.getItem('kyllerPlayer')) {
-      this.$modal.show('hello-world')
+    if (!localStorage.getItem("kyllerPlayer")) {
+      this.$modal.show("hello-world")
     }
   },
   created: function() {
       var db = firebase.firestore();
       db.collection("games").doc(this.$route.params.game).onSnapshot((doc)  => {
-        console.log("Current data: ", doc.data()['players'])
+        console.log("Current data: ", doc.data()["players"])
         this.players = doc.data()["players"]
-        const playerName = localStorage.getItem('kyllerPlayer')
+        this.game = doc.data()["name"]
+        const playerName = localStorage.getItem("kyllerPlayer")
         if (playerName) {
         this.player = this.players.find((p) => p.name === playerName)
       }
@@ -60,38 +72,24 @@ export default {
   },
   methods: {
     show() {
-        this.$modal.show('hello-world')
+        this.$modal.show("hello-world")
     },
     hide() {
-        this.$modal.hide('hello-world')
+        this.$modal.hide("hello-world")
     },
     chose(player) {
       if (player) {
-        localStorage.setItem('kyllerPlayer', player.name)
+        localStorage.setItem("kyllerPlayer", player.name)
         this.player = player
-        this.$modal.hide('hello-world')
+        this.$modal.hide("hello-world")
       }
     },
     quit() {
-      localStorage.removeItem('kyllerPlayer')
-      this.$router.push('/')
+      localStorage.removeItem("kyllerPlayer")
+      this.$router.push("/")
     },
     killed(status) {
-      var killedFunction = firebase.functions().httpsCallable('killed')
-      // axios.post('http://localhost:5000/kyller/us-central1/killed', {data: {
-      // // axios.post('https://us-central1-kyller.cloudfunctions.net/killed', {data: {
-      //     'gameId': this.$route.params.game,
-      //     'playerName': this.player.name,
-      //     'status': status
-      //   }}, {
-      //     headers: {
-      //       'Content-Type': 'application/json',
-      //     }
-      //   }).then(function(ok) {
-      //     console.log(ok)
-      //   }, function(error) {
-      //     console.log(error)
-      //   })
+      var killedFunction = firebase.functions().httpsCallable("killed")
       killedFunction({
         gameId: this.$route.params.game,
         playerName: this.player.name,
