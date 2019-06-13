@@ -27,6 +27,8 @@
                   <button @click="chose(player)">{{ player.name }}</button>
                 </li>
                 </ul>
+                <p v-if="error">{{error}}</p>
+                <button @click="quit">Quitter</button>
             </div>
         </template>
     </modal>
@@ -44,7 +46,8 @@ export default {
       return {
           players: [],
           player: null,
-          game: ''
+          game: '',
+          error: null
       }
   },
   components: {
@@ -60,14 +63,20 @@ export default {
   },
   created: function() {
       var db = firebase.firestore();
+      console.log('object')
       db.collection("games").doc(this.$route.params.game).onSnapshot((doc)  => {
-        console.log("Current data: ", doc.data()["players"])
-        this.players = doc.data()["players"]
-        this.game = doc.data()["name"]
-        const playerName = localStorage.getItem("kyllerPlayer")
-        if (playerName) {
-        this.player = this.players.find((p) => p.name === playerName)
-      }
+        if (doc.data()) {
+          console.log("Current data: ", doc.data()["players"])
+          this.players = doc.data()["players"]
+          this.game = doc.data()["name"]
+          const playerName = localStorage.getItem("kyllerPlayer")
+          if (playerName) {
+            this.player = this.players.find((p) => p.name === playerName)
+          }
+        } else {
+          console.log('doc :', doc)
+          this.error = 'Cette partie n\'existe pas...'
+        }
     });
   },
   methods: {
