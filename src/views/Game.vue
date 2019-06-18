@@ -3,9 +3,7 @@
     <div v-if="player">
       <p style="text-align:center;">{{game}}</p>
       <p style="text-align:center;">{{players.filter((p)=>!p.killed).length}} joueurs restants</p>
-      <div v-show="player.killed">
-        Vous avez perdu :(
-      </div>
+      <div v-show="player.killed">Vous avez perdu :(</div>
       <div v-show="player.name != player.to_kill && !player.killed">
         <p>{{player.name}}</p>
         <p>{{player.mission}}</p>
@@ -14,104 +12,112 @@
       <div v-show="player.name == player.to_kill && !player.killed">
         <p>Vous avez gagné !</p>
       </div>
-      <button @click="killed('killed')"> J'ai kill !</button>
+      <button @click="killed('killed')">J'ai kill !</button>
       <button @click="quit">Quitter</button>
     </div>
     <p v-show="!player">Loading...</p>
-    <modal name="hello-world" height="100%" width="100%">
-        <template>
-            <div>
-                <p style="text-align:center;">{{game}}</p>
-                <ul id="example-1">
-                <li v-for="player in players" v-bind:key="player.name">
-                  <button @click="chose(player)">{{ player.name }}</button>
-                </li>
-                </ul>
-                <p v-if="error">{{error}}</p>
-                <button @click="quit">Quitter</button>
-            </div>
-        </template>
+    <modal name="who-are-you" height="100%" width="100%">
+      <template>
+        <div>
+          <p style="text-align:center;">{{game}}</p>
+          <ul id="example-1">
+            <li v-for="player in players" v-bind:key="player.name">
+              <button @click="chose(player)">{{ player.name }}</button>
+            </li>
+          </ul>
+          <p v-if="error">{{error}}</p>
+          <button @click="quit">Quitter</button>
+        </div>
+      </template>
     </modal>
   </div>
 </template>
 
 <script>
-import firebase from "firebase"
-import PlayersModal from "@/components/PlayersModal.vue"
-import axios from "axios"
+import firebase from "firebase";
+import PlayersModal from "@/components/PlayersModal.vue";
+import axios from "axios";
 
 export default {
   name: "Game",
   data() {
-      return {
-          players: [],
-          player: null,
-          game: '',
-          error: null
-      }
+    return {
+      players: [],
+      player: null,
+      game: "",
+      error: null
+    };
   },
   components: {
-      PlayersModal
+    PlayersModal
   },
   props: {
     msg: String
   },
   mounted: function() {
     if (!localStorage.getItem("kyllerPlayer")) {
-      this.$modal.show("hello-world")
+      this.$modal.show("who-are-you");
     }
   },
   created: function() {
-      var db = firebase.firestore();
-      console.log('object')
-      db.collection("games").doc(this.$route.params.game).onSnapshot((doc)  => {
+    var db = firebase.firestore();
+    console.log("object");
+    db.collection("games")
+      .doc(this.$route.params.game)
+      .onSnapshot(doc => {
         if (doc.data()) {
-          console.log("Current data: ", doc.data()["players"])
-          this.players = doc.data()["players"]
-          this.game = doc.data()["name"]
-          const playerName = localStorage.getItem("kyllerPlayer")
+          console.log("Current data: ", doc.data()["players"]);
+          this.players = doc.data()["players"];
+          this.game = doc.data()["name"];
+          const playerName = localStorage.getItem("kyllerPlayer");
           if (playerName) {
-            this.player = this.players.find((p) => p.name === playerName)
+            this.player = this.players.find(p => p.name === playerName);
+            if (!this.player) {
+              localStorage.removeItem("kyllerPlayer");
+              this.$modal.show("who-are-you");
+            }
           }
         } else {
-          console.log('doc :', doc)
-          this.error = 'Cette partie n\'existe pas...'
+          console.log("doc :", doc);
+          this.error = "Cette partie n'existe pas...";
         }
-    });
+      });
   },
   methods: {
     show() {
-        this.$modal.show("hello-world")
+      this.$modal.show("who-are-you");
     },
     hide() {
-        this.$modal.hide("hello-world")
+      this.$modal.hide("who-are-you");
     },
     chose(player) {
       if (player) {
-        localStorage.setItem("kyllerPlayer", player.name)
-        this.player = player
-        this.$modal.hide("hello-world")
+        localStorage.setItem("kyllerPlayer", player.name);
+        this.player = player;
+        this.$modal.hide("who-are-you");
       }
     },
-    quit() {
-      localStorage.removeItem("kyllerPlayer")
-      this.$router.push("/")
+    quit() {
+      localStorage.removeItem("kyllerPlayer");
+      this.$router.push("/");
     },
     killed(status) {
-      var killedFunction = firebase.functions().httpsCallable("killed")
+      var killedFunction = firebase.functions().httpsCallable("killed");
       killedFunction({
         gameId: this.$route.params.game,
         playerName: this.player.name,
         status: status
-      }).then(function(ok) {
-        console.log(ok)
-      }, function(error) {
-        console.log(error)
-      })
+      }).then(
+        function(ok) {
+          console.log(ok);
+        },
+        function(error) {
+          console.log(error);
+        }
+      );
     }
-  },
-  
-}
+  }
+};
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
