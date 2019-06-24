@@ -1,32 +1,60 @@
 <template>
   <div>
-    <div v-if="player">
-      <p style="text-align:center;">{{game}}</p>
-      <p style="text-align:center;">{{players.filter((p)=>!p.killed).length}} joueurs restants</p>
-      <div v-show="player.killed">Vous avez perdu :(</div>
+    <div
+      v-if="player"
+      style="display: flex; 
+      flex-direction: column;
+      justify-content: space-between; 
+      height:85vh;"
+    >
+      <p class="game-name">{{game}}</p>
+      <p
+        style="text-align:center;"
+        class="small-text"
+      >{{players.filter((p)=>!p.killed).length}} joueurs restants</p>
+      <div v-show="player.killed">
+        <p class="big-label">MISSION FAILED</p>
+        <p class="small-text">Vous avez été éliminé :(</p>
+      </div>
       <div v-show="player.name != player.to_kill && !player.killed">
-        <p>{{player.name}}</p>
-        <p>{{player.mission}}</p>
-        <p>{{player.to_kill}}</p>
+        <p class="big-label">CIBLE :</p>
+        <p class="small-text">{{player.to_kill}}</p>
+        <p class="big-label">MISSION</p>
+        <p class="small-text">{{player.mission}}</p>
       </div>
       <div v-show="player.name == player.to_kill && !player.killed">
-        <p>Vous avez gagné !</p>
+        <p class="big-label">MISSION ACCOMPLISHED</p>
+        <p class="small-text">Félicitations, vous êtes notre meilleur espion !</p>
       </div>
-      <button @click="killed('killed')">J'ai kill !</button>
-      <button @click="quit">Quitter</button>
+      <div class="btns-group">
+        <div
+          class="btn-kill"
+          @click="killed('got_killed')"
+          v-show="player.name != player.to_kill && !player.killed"
+        >J'ai été kill !</div>
+        <div
+          class="btn-kill"
+          @click="killed('got_counter_killed')"
+          v-show="player.name != player.to_kill && !player.killed"
+        >J'ai été contre kill !</div>
+        <div class="quit-btn" @click="quit">Quitter</div>
+      </div>
     </div>
     <p v-show="!player">Loading...</p>
-    <modal name="who-are-you" height="100%" width="100%">
+    <modal name="who-are-you" height="auto" width="100%" :scrollable="true">
       <template>
         <div>
-          <p style="text-align:center;">{{game}}</p>
-          <ul id="example-1">
+          <p class="game-name">{{game}}</p>
+          <p style="font-family: 'courier'; text-align:center;">Qui êtes-vous ?</p>
+          <ul class="players-list">
             <li v-for="player in players" v-bind:key="player.name">
-              <button @click="chose(player)">{{ player.name }}</button>
+              <div class="btn-player" @click="chose(player)">{{ player.name }}</div>
             </li>
           </ul>
           <p v-if="error">{{error}}</p>
-          <button @click="quit">Quitter</button>
+          <div style="display:flex; width:99%; justify-content:center; padding-bottom: 15vh">
+            <div class="quit-btn" @click="quit">Quitter</div>
+          </div>
         </div>
       </template>
     </modal>
@@ -61,12 +89,10 @@ export default {
   },
   created: function() {
     var db = firebase.firestore();
-    console.log("object");
     db.collection("games")
       .doc(this.$route.params.game)
       .onSnapshot(doc => {
         if (doc.data()) {
-          console.log("Current data: ", doc.data()["players"]);
           this.players = doc.data()["players"];
           this.game = doc.data()["name"];
           const playerName = localStorage.getItem("kyllerPlayer");
@@ -78,7 +104,6 @@ export default {
             }
           }
         } else {
-          console.log("doc :", doc);
           this.error = "Cette partie n'existe pas...";
         }
       });
@@ -122,6 +147,10 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+@font-face {
+  font-family: "gunplay";
+  src: url("../assets/gunplayrg.ttf") format("truetype");
+}
 h3 {
   margin: 40px 0 0;
 }
@@ -135,5 +164,57 @@ li {
 }
 a {
   color: #42b983;
+}
+.game-name {
+  font-size: 2em;
+  text-align: center;
+  font-family: "courier";
+}
+.players-list li {
+  display: block;
+  text-align: center;
+  border-bottom: 1px solid grey;
+}
+.players-list li:first-child {
+  border-top: 1px solid grey;
+}
+.btn-player {
+  font-size: 1em;
+  font-family: "courier";
+  /* color: #494949 !important; */
+  /* background: #ffffff; */
+  padding: 20px;
+}
+.big-label {
+  text-transform: uppercase;
+  font-family: "gunplay";
+  font-size: 1.1em;
+}
+.small-text {
+  font-family: "courier";
+  font-size: 1em;
+}
+.quit-btn {
+  font-family: "gunplay";
+  text-transform: uppercase;
+  font-size: 1em;
+  margin-top: 1em;
+  padding: 10px;
+}
+.btns-group {
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+.btn-kill {
+  border: none;
+  padding: 10px;
+  width: 60vw;
+  background: #ffbf00;
+  align-self: center;
+  font-family: gunplay;
+  text-transform: uppercase;
+  font-size: 1em;
 }
 </style>
