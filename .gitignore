@@ -5,6 +5,7 @@ src/serviceAccountKey.json
 src/scripts/missions.csv
 .env
 .env.local
+.env.development.local
 
 # local env files
 .env.local
