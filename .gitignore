@@ -3,6 +3,8 @@ node_modules
 /dist
 src/serviceAccountKey.json
 src/scripts/missions.csv
+.env
+.env.local
 
 # local env files
 .env.local
