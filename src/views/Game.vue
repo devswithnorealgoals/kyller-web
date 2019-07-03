@@ -130,7 +130,7 @@ export default {
     },
     fetchAndRefresh(loaded) {
       axios
-      .get("http://localhost:5000/api/game/" + this.$route.params.game)
+      .get("https://kyller-web.herokuapp.com/api/game/" + this.$route.params.game)
       .then(result => {
         if (loaded) {
           loaded('done')
@@ -148,7 +148,7 @@ export default {
     killed(status) {
       axios
         .post(
-          "http://localhost:5000/api/game/" +
+          "https://kyller-web.herokuapp.com/api/game/" +
             this.$route.params.game +
             "/killed",
           { status, playerName: this.player.name }
