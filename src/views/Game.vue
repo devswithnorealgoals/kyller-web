@@ -1,46 +1,57 @@
 <template>
   <div>
-    <div
-      v-if="player"
-      style="display: flex; 
+    <pull-to :top-load-method="fetchAndRefresh"
+    :top-config="{
+      pullText:'rafraîchir',
+      doneText:'ok',
+      failText:'erreur',
+      loadingText:'loading...',
+      triggerText: 'loading...'}">
+      <div
+        v-if="player"
+        style="display: flex; 
       flex-direction: column;
       justify-content: space-between; 
-      height:85vh;"
-    >
-      <p class="game-name">{{game}}</p>
-      <p
-        style="text-align:center;"
-        class="small-text"
-      >{{players.filter((p)=>!p.killed).length}} joueurs restants</p>
-      <div v-show="player.killed">
-        <p class="big-label">MISSION FAILED</p>
-        <p class="small-text">Vous avez été éliminé :(</p>
+      height:90vh;
+      padding:5px;"
+      >
+        <!-- <p>v rafraîchir</p> -->
+        <p class="game-name">{{game}}</p>
+        <p
+          style="text-align:center;"
+          class="small-text"
+        >{{players.filter((p)=>!p.killed).length}} joueurs restants</p>
+        <div v-show="player.killed">
+          <p class="big-label">MISSION FAILED</p>
+          <p class="small-text">Vous avez été éliminé :(</p>
+        </div>
+        <div v-show="player.name != player.to_kill && !player.killed">
+          <p class="big-label">CIBLE :</p>
+          <p class="small-text">{{player.to_kill}}</p>
+          <p class="big-label">MISSION</p>
+          <p class="small-text">{{player.mission}}</p>
+        </div>
+        <div v-show="player.name == player.to_kill && !player.killed">
+          <p class="big-label">MISSION ACCOMPLISHED</p>
+          <p class="small-text">Félicitations, vous êtes notre meilleur espion !</p>
+        </div>
+        <div class="btns-group">
+          <div
+            class="btn-kill"
+            @click="killed('got_killed')"
+            v-show="player.name != player.to_kill && !player.killed"
+          >J'ai été kill !</div>
+          <div
+            class="btn-kill"
+            @click="killed('got_counter_killed')"
+            v-show="player.name != player.to_kill && !player.killed"
+          >J'ai été contre kill !</div>
+          <div class="quit-btn" @click="quit">Quitter</div>
+        </div>
+        <div style="height:10vh"></div>
       </div>
-      <div v-show="player.name != player.to_kill && !player.killed">
-        <p class="big-label">CIBLE :</p>
-        <p class="small-text">{{player.to_kill}}</p>
-        <p class="big-label">MISSION</p>
-        <p class="small-text">{{player.mission}}</p>
-      </div>
-      <div v-show="player.name == player.to_kill && !player.killed">
-        <p class="big-label">MISSION ACCOMPLISHED</p>
-        <p class="small-text">Félicitations, vous êtes notre meilleur espion !</p>
-      </div>
-      <div class="btns-group">
-        <div
-          class="btn-kill"
-          @click="killed('got_killed')"
-          v-show="player.name != player.to_kill && !player.killed"
-        >J'ai été kill !</div>
-        <div
-          class="btn-kill"
-          @click="killed('got_counter_killed')"
-          v-show="player.name != player.to_kill && !player.killed"
-        >J'ai été contre kill !</div>
-        <div class="quit-btn" @click="quit">Quitter</div>
-      </div>
-    </div>
-    <p v-show="!player">Loading...</p>
+      <p v-show="!player">Loading...</p>
+    </pull-to>
     <modal name="who-are-you" height="auto" width="100%" :scrollable="true">
       <template>
         <div>
@@ -62,9 +73,10 @@
 </template>
 
 <script>
-import firebase from "firebase";
+// import firebase from "firebase";
 import PlayersModal from "@/components/PlayersModal.vue";
 import axios from "axios";
+import PullTo from "vue-pull-to";
 
 export default {
   name: "Game",
@@ -77,7 +89,8 @@ export default {
     };
   },
   components: {
-    PlayersModal
+    PlayersModal,
+    PullTo
   },
   props: {
     msg: String
@@ -88,25 +101,7 @@ export default {
     }
   },
   created: function() {
-    var db = firebase.firestore();
-    db.collection("games")
-      .doc(this.$route.params.game)
-      .onSnapshot(doc => {
-        if (doc.data()) {
-          this.players = doc.data()["players"];
-          this.game = doc.data()["name"];
-          const playerName = localStorage.getItem("kyllerPlayer");
-          if (playerName) {
-            this.player = this.players.find(p => p.name === playerName);
-            if (!this.player) {
-              localStorage.removeItem("kyllerPlayer");
-              this.$modal.show("who-are-you");
-            }
-          }
-        } else {
-          this.error = "Cette partie n'existe pas...";
-        }
-      });
+    this.fetchAndRefresh()
   },
   methods: {
     show() {
@@ -122,24 +117,47 @@ export default {
         this.$modal.hide("who-are-you");
       }
     },
+    refresh(players) {
+      this.players = players;
+      const playerName = localStorage.getItem("kyllerPlayer");
+      if (playerName) {
+        this.player = this.players.find(p => p.name === playerName);
+        if (!this.player) {
+          localStorage.removeItem("kyllerPlayer");
+          this.$modal.show("who-are-you");
+        }
+      }
+    },
+    fetchAndRefresh(loaded) {
+      axios
+      .get("http://localhost:5000/api/game/" + this.$route.params.game)
+      .then(result => {
+        if (loaded) {
+          loaded('done')
+        }
+        if (result.data && result.data.game.name) {
+          this.game = result.data.game.name
+        }
+        this.refresh(result.data.game["players"]);
+      });
+    },
     quit() {
       localStorage.removeItem("kyllerPlayer");
       this.$router.push("/");
     },
     killed(status) {
-      var killedFunction = firebase.functions().httpsCallable("killed");
-      killedFunction({
-        gameId: this.$route.params.game,
-        playerName: this.player.name,
-        status: status
-      }).then(
-        function(ok) {
-          console.log(ok);
-        },
-        function(error) {
-          console.log(error);
-        }
-      );
+      axios
+        .post(
+          "http://localhost:5000/api/game/" +
+            this.$route.params.game +
+            "/killed",
+          { status, playerName: this.player.name }
+        )
+        .then(result => {
+          if (result.data && result.data.new) {
+            this.refresh(result.data.new);
+          }
+        });
     }
   }
 };
