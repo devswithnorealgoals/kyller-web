@@ -1,7 +1,8 @@
 // server.js
 require("dotenv").config()
 var express = require('express');
-// var path = require('path');
+var path = require('path');
+const history = require('connect-history-api-fallback');
 var serveStatic = require('serve-static');
 var bodyParser = require("body-parser");
 var cors = require('cors')
@@ -29,7 +30,6 @@ app.use(cors())
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(serveStatic(__dirname + "/dist"));
 // routes(app);
 app.get('/api/game/:id', function (req, res, next) {
     getGameInfos({ gameId: req.params.id }).then(function (result) {
@@ -49,6 +49,17 @@ app.post('/api/game/:id/killed', function (req, res, next) {
         res.json(error)
     })
 })
+const staticFileMiddleware = express.static(path.join(__dirname + '/dist'));
+app.use(staticFileMiddleware);
+app.use(history({
+  disableDotRule: true,
+  verbose: true
+}));
+app.use(staticFileMiddleware);
+// app.use(serveStatic(__dirname + "/dist"));
+app.get('/', function (req, res) {
+    res.render(path.join(__dirname + '/dist/index.html'));
+  });
 var port = process.env.PORT || 5000;
 app.listen(port);
 
